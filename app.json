@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Farm App",
+    "slug": "farm-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#1B4332"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "tv.3ss.farmapp",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Camera is used to scan animal ear tag barcodes."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1B4332"
+      },
+      "package": "tv.ss3.farmapp",
+      "permissions": ["android.permission.CAMERA"]
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Farm App to access your camera to scan ear tag barcodes."
+        }
+      ]
+    ]
+  }
+}
