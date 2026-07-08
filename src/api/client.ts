@@ -1,10 +1,17 @@
 import { Platform } from 'react-native';
 
+function extractError(b: any, status: number): string {
+  const d = b?.detail;
+  if (typeof d === 'string') return d;
+  if (Array.isArray(d)) return d.map((e: any) => e.msg ?? JSON.stringify(e)).join(', ');
+  return `HTTP ${status}`;
+}
+
 const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
 const BASE_URL =
   Platform.OS === 'web'
-    ? (isLocalhost ? 'http://localhost:8000' : 'https://farm-backend-production-8f22.up.railway.app')
-    : 'http://localhost:8000';
+    ? (isLocalhost ? 'http://localhost:8080' : 'http://18.193.35.22/farm')
+    : 'http://18.193.35.22/farm';
 
 export interface CattleSearchResult {
   ear_tag: string;
@@ -113,7 +120,7 @@ export async function searchMotherByLast4(last4: string): Promise<MotherInfo[]> 
 export async function saveBirth(data: {
   ear_tag: string; company: string | null; birth_date: string;
   sex: string; color: string; comment: string | null;
-  mother_ear_tag: string | null; no_id: boolean;
+  mother_ear_tag: string | null; no_id: boolean; neutered?: boolean;
 }): Promise<void> {
   const res = await fetch(`${BASE_URL}/api/births/save`, {
     method: 'POST',
@@ -518,13 +525,13 @@ export async function fetchGroupDetails(groupName: string): Promise<GroupDetails
 
 export async function searchGroupAddAnimal(last4: string, groupName: string): Promise<GroupAnimal[]> {
   const res = await fetch(`${BASE_URL}/api/groups/check-add?last4=${last4}&group=${encodeURIComponent(groupName)}`);
-  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail ?? `HTTP ${res.status}`); }
+  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(extractError(b, res.status)); }
   return res.json();
 }
 
 export async function searchGroupRemoveAnimal(last4: string, groupName: string): Promise<GroupAnimal[]> {
   const res = await fetch(`${BASE_URL}/api/groups/check-remove?last4=${last4}&group=${encodeURIComponent(groupName)}`);
-  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail ?? `HTTP ${res.status}`); }
+  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(extractError(b, res.status)); }
   return res.json();
 }
 
@@ -558,7 +565,7 @@ export async function fetchGroupBulls(): Promise<GroupAnimal[]> {
 
 export async function searchBullEligible(last4: string): Promise<GroupAnimal[]> {
   const res = await fetch(`${BASE_URL}/api/groups/bulls/search?last4=${last4}`);
-  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail ?? `HTTP ${res.status}`); }
+  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(extractError(b, res.status)); }
   return res.json();
 }
 
@@ -583,6 +590,7 @@ export interface MedicalProcedure {
   medication_name: string;
   begin_period: string;
   end_period: string;
+  animal_count: number;
 }
 
 export interface MedicalRecord {
@@ -629,7 +637,7 @@ export async function createMedicalProcedure(data: {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail ?? `HTTP ${res.status}`); }
+  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(extractError(b, res.status)); }
   return res.json();
 }
 
@@ -665,7 +673,7 @@ export async function updateMedicalProcedure(id: number, data: {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail ?? `HTTP ${res.status}`); }
+  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(extractError(b, res.status)); }
   return res.json();
 }
 
@@ -682,7 +690,7 @@ export async function fetchLastProcedureRecord(earTag: string, procedureId: numb
 
 export async function checkMedicalAnimal(last4: string): Promise<MedicalAnimalInfo> {
   const res = await fetch(`${BASE_URL}/api/medical/check?last4=${last4}`);
-  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail ?? `HTTP ${res.status}`); }
+  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(extractError(b, res.status)); }
   return res.json();
 }
 
@@ -696,7 +704,7 @@ export async function recordMedicalProcedure(data: {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail ?? `HTTP ${res.status}`); }
+  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(extractError(b, res.status)); }
 }
 
 // ── Edit ──────────────────────────────────────────────────────────────────────
@@ -734,6 +742,44 @@ export async function fetchEditFormData(): Promise<{ companies: string[]; groups
 export async function updateAnimal(earTag: string, data: EditAnimalData): Promise<{ ear_tag: string }> {
   const res = await fetch(`${BASE_URL}/api/edit/${encodeURIComponent(earTag)}`, {
     method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export interface CreateAnimalData {
+  ear_tag: string;
+  company?: string;
+  birth_date?: string;
+  sex?: string;
+  color?: string;
+  race?: string;
+  bidaa?: boolean;
+  pedigree?: string;
+  breeding?: boolean;
+  purpose?: string;
+  is_bull?: boolean;
+  status?: string;
+  death_date?: string;
+  death_reason?: string;
+  sales_date?: string;
+  client_name?: string;
+  group_name?: string;
+  mother_ear_tag?: string;
+  father_ear_tag?: string;
+  comment?: string;
+  initial_weight_kg?: number | null;
+  initial_weight_date?: string | null;
+}
+
+export async function createAnimal(data: CreateAnimalData): Promise<{ ear_tag: string }> {
+  const res = await fetch(`${BASE_URL}/api/edit/`, {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
@@ -794,7 +840,7 @@ export async function assignFather(calfEarTag: string, fatherEarTag: string): Pr
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ calf_ear_tag: calfEarTag, father_ear_tag: fatherEarTag }),
   });
-  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail ?? `HTTP ${res.status}`); }
+  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(extractError(b, res.status)); }
 }
 
 export async function skipFather(earTag: string): Promise<void> {
@@ -816,7 +862,7 @@ export async function recordIndividualTreatment(data: {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail ?? `HTTP ${res.status}`); }
+  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(extractError(b, res.status)); }
 }
 
 // ── Feed: Bales ───────────────────────────────────────────────────────────────
@@ -831,7 +877,7 @@ export async function fetchBaleProductionFormData(): Promise<{ areas: string[]; 
 }
 export async function addBaleProduction(data: { area: string; bale_type: string; weight_kg: number; count: number; production_date: string }): Promise<void> {
   const res = await fetch(`${BASE_URL}/api/feed/bales/production`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail ?? `HTTP ${res.status}`); }
+  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(extractError(b, res.status)); }
 }
 export async function fetchBaleProductionStats(): Promise<BaleStats> {
   const res = await fetch(`${BASE_URL}/api/feed/bales/production/stats`);
@@ -846,7 +892,7 @@ export async function fetchBaleEntryFormData(): Promise<{ bale_types: string[]; 
 }
 export async function addBaleEntry(data: { bale_type: string; weight_kg: number; count: number; is_purchased: boolean; entry_date: string }): Promise<void> {
   const res = await fetch(`${BASE_URL}/api/feed/bales/entry`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail ?? `HTTP ${res.status}`); }
+  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(extractError(b, res.status)); }
 }
 export async function fetchBaleEntryStats(): Promise<BaleStats> {
   const res = await fetch(`${BASE_URL}/api/feed/bales/entry/stats`);
@@ -861,7 +907,7 @@ export async function fetchBaleConsumptionFormData(): Promise<{ bale_types: stri
 }
 export async function addBaleConsumption(data: { bale_type: string; weight_kg: number; count: number; from_field: boolean; entry_date: string }): Promise<void> {
   const res = await fetch(`${BASE_URL}/api/feed/bales/consumption`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail ?? `HTTP ${res.status}`); }
+  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(extractError(b, res.status)); }
 }
 export async function fetchBaleConsumptionStats(): Promise<BaleStats> {
   const res = await fetch(`${BASE_URL}/api/feed/bales/consumption/stats`);
@@ -879,9 +925,9 @@ export async function fetchCerealProductionFormData(): Promise<{ areas: string[]
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
-export async function addCerealProduction(data: { area: string; cereal_type: string; harvest_kg: number; production_date: string }): Promise<void> {
+export async function addCerealProduction(data: { area?: string | null; cereal_type: string; harvest_kg: number; is_purchased?: boolean; supplier?: string | null; production_date: string }): Promise<void> {
   const res = await fetch(`${BASE_URL}/api/feed/cereals/production`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail ?? `HTTP ${res.status}`); }
+  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(extractError(b, res.status)); }
 }
 export async function fetchCerealProductionStats(): Promise<CerealStats> {
   const res = await fetch(`${BASE_URL}/api/feed/cereals/production/stats`);
@@ -891,7 +937,7 @@ export async function fetchCerealProductionStats(): Promise<CerealStats> {
 
 export async function addCerealConsumption(data: { cereal_type: string; consumption_kg: number; consumption_date: string }): Promise<void> {
   const res = await fetch(`${BASE_URL}/api/feed/cereals/consumption`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail ?? `HTTP ${res.status}`); }
+  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(extractError(b, res.status)); }
 }
 export async function fetchCerealConsumptionStats(): Promise<CerealStats> {
   const res = await fetch(`${BASE_URL}/api/feed/cereals/consumption/stats`);
@@ -901,10 +947,37 @@ export async function fetchCerealConsumptionStats(): Promise<CerealStats> {
 
 export async function addCerealSale(data: { cereal_type: string; sale_kg: number; client: string; sale_date: string }): Promise<void> {
   const res = await fetch(`${BASE_URL}/api/feed/cereals/sale`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail ?? `HTTP ${res.status}`); }
+  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(extractError(b, res.status)); }
 }
 export async function fetchCerealSaleStats(): Promise<CerealStats> {
   const res = await fetch(`${BASE_URL}/api/feed/cereals/sale/stats`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export interface CerealStockRow { cereal_type: string; stock_kg: number }
+
+export async function fetchCerealStock(): Promise<CerealStockRow[]> {
+  const res = await fetch(`${BASE_URL}/api/feed/cereals/stock`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export interface BaleStockRow {
+  bale_type:   string;
+  total_count: number; total_kg:  number;
+  field_count: number; field_kg:  number;
+  farm_count:  number; farm_kg:   number;
+}
+
+export async function fetchBaleStock(): Promise<BaleStockRow[]> {
+  const res = await fetch(`${BASE_URL}/api/feed/bales/stock`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function fetchAvailableWeights(bale_type: string, location: 'field' | 'farm'): Promise<number[]> {
+  const res = await fetch(`${BASE_URL}/api/feed/bales/available-weights?bale_type=${encodeURIComponent(bale_type)}&location=${location}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
